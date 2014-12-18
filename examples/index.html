@@ -65,7 +65,7 @@
       },
       aim1: {
         is: function(e, node, key) {
-          console.log('aim1  只触发一次');
+          console.log('aim1 只触发一次');
         },
         not: function() {
           console.log('没点击到aim1');
@@ -81,6 +81,29 @@
         }
       }
     });
+
+    Action.listen({
+      alert: function() {
+        console.log('document接受到冒泡，click 2');
+      },
+      aim1: {
+        is: function(e, node, key) {
+          console.log('aim1 只触发一次 2');
+        },
+        not: function() {
+          console.log('没点击到aim1 2');
+        }
+      },
+      aim2: {
+        is: function(e, node, key) {
+          console.log('aim2 会一直触发 2');
+        },
+        not: function() {
+          console.log('没点击到aim2 2');
+          return false;
+        }
+      }
+    }, document.querySelector('#box5'));
 
     Action.listen({
       alert: function(e, node, key) {

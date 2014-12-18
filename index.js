@@ -10,8 +10,16 @@
 var $ = require('jquery');
 var Events = require('nd-events');
 
+var cache = [];
+
+var actionKeyVal = 'data-action';
+var actionKeySplitter = /\s+/;
+
+var ACTION_NS = 'action-ns';
+
 function bindContext(events, context) {
   var __events = events.__events;
+
   $.each(__events, function(actionKey, arr) {
     $.each(arr, function(index) {
       if (index % 2 === 1) {
@@ -24,49 +32,59 @@ function bindContext(events, context) {
 function bindAction(events, notEvents, actions) {
   $.each(actions, function(actionKey, action) {
     var parsedAction = {};
+
     if ($.isFunction(action)) {
       parsedAction.is = action;
     } else {
       parsedAction = action;
-      parsedAction.is = parsedAction.is || parsedAction.callback;
+      parsedAction.is || (parsedAction.is = parsedAction.callback);
     }
 
-    $.each(parsedAction, function(key, actionCallback) {
+    $.each(parsedAction, function(aspect, actionCallback) {
       if ($.isFunction(actionCallback)) {
-        events.on(key + ':' + actionKey, actionCallback);
+        events.on(aspect + ':' + actionKey, actionCallback);
       }
     });
 
     // 如果存在not事件，绑定默认事件
     if ($.isFunction(parsedAction.not)) {
-      events.on('is:' + actionKey, function(e, xnode, actionKey) {
+      events.on('is:' + actionKey, function(e) {
         notEvents[actionKey] = {
-          xnode: xnode
+          actionNode: e.actionNode
         };
       });
     }
   });
 }
 
-var cache = {
-  dom: [],
-  eventType: [],
-  events: [],
-  notEvents: []
-};
+function triggerEvent(events, e) {
+  return events.trigger(e.actionAspect + ':' + e.actionKey, e);
+}
 
-var actionKeyVal = 'data-action';
-var actionKeySplitter = /\s+/;
+function findIndex(node, type) {
+  var i, n = cache.length;
+
+  for (i = 0; i < n; i++) {
+    if (node === cache[i].dom && type === cache[i].eventType) {
+      return i;
+    }
+  }
+
+  return -1;
+}
 
 module.exports = {
+
   setActionKey: function(key) {
     actionKeyVal = key;
     this.setActionKey = null;
   },
+
   setActionKeySplitter: function(key) {
     actionKeySplitter = key;
     this.setActionKeySplitter = null;
   },
+
   /**
    * 利用冒泡来做监听，这样做有以下优势：
    *     1. 减少事件绑定数量，提高程序效率，尤其在列表性质的节点上，无需每个节点都绑定
@@ -88,47 +106,49 @@ module.exports = {
    * @return {object} jQuery对象，父节点
    */
   listen: function(actions, node, type) {
-    actions = actions || {};
-    node = node ? $(node) : $(document);
-    type = type || 'click';
+    actions || (actions = {});
 
-    var index = $.inArray(node[0], cache.dom);
-    if (index !== -1) {
-      if (cache.eventType[index] !== type) {
-        index = -1;
-      }
-    }
+    node = node ? $(node) : $(document);
+    type = (type ||'click') + '.' + ACTION_NS;
+
+    var index = findIndex(node[0], type);
 
     if (index === -1) {
-      cache.dom.push(node[0]);
-      cache.eventType.push(type);
-      cache.events.push(new Events());
-      cache.notEvents.push({});
-      index = cache.events.length - 1;
+      var actionItem = {
+        dom: node[0],
+        eventType: type,
+        events: new Events(),
+        notEvents: {}
+      };
 
-      var events = cache.events[index];
-      var notEvents = cache.notEvents[index];
+      var events = actionItem.events;
+      var notEvents = actionItem.notEvents;
+
       bindAction(events, notEvents, actions);
 
-      $(node).on(type, function(e) {
+      node.on(type, function(e) {
         var target = $(e.target);
-        var xnode = target;
-        var actionKeys = target.attr(actionKeyVal);
-        if (!actionKeys) {
-          xnode = target.closest('[' + actionKeyVal + ']');
-          actionKeys = xnode.attr(actionKeyVal);
+        var actionNode = target.closest('[' + actionKeyVal + ']');
+        var actionKeys = actionNode.attr(actionKeyVal);
+
+        // 返回
+        if (!actionKeys && $.isEmptyObject(notEvents)) {
+          return;
         }
 
         bindContext(events, target);
 
-        // 遍历notEvents如果新对象不是原先触发的对象则触发not事件
-        $.each(notEvents, function(_actionKey, notEvent) {
-          var _xnode = notEvent.xnode;
+        // 遍历 notEvents 如果新对象不是原先触发的对象则触发 not 事件
+        $.each(notEvents, function(actionKey, notEvent) {
+          if (actionNode[0] !== notEvent.actionNode[0]) {
+            $.extend(e, {
+              actionNode: notEvent.actionNode,
+              actionKey: actionKey,
+              actionAspect: 'not'
+            });
 
-          if (xnode[0] !== _xnode[0]) {
-            // bindContext(events, target);
-            if (!!events.trigger('not:' + _actionKey, e, _xnode, _actionKey)) {
-              delete notEvents[_actionKey];
+            if (triggerEvent(events, e) !== false) {
+              delete notEvents[actionKey];
             }
           }
         });
@@ -137,19 +157,45 @@ module.exports = {
           actionKeys = actionKeys.split(actionKeySplitter);
           $.each(actionKeys, function(_index, actionKey) {
             if (actionKey.length) {
-              // bindContext(events, target);
-              if (events.trigger('before:' + actionKey, e, xnode, actionKey)) {
-                events.trigger('is:' + actionKey, e, xnode, actionKey);
-                events.trigger('after:' + actionKey, e, xnode, actionKey);
+              $.extend(e, {
+                actionNode: actionNode,
+                actionKey: actionKey,
+                actionAspect: 'before'
+              });
+
+              if (triggerEvent(events, e) !== false) {
+                e.actionAspect = 'is';
+                triggerEvent(events, e);
+
+                e.actionAspect = 'after';
+                triggerEvent(events, e);
               }
             }
           });
         }
       });
+
+      cache.push(actionItem);
     } else {
-      bindAction(cache.events[index], cache.notEvents[index], actions);
+      bindAction(cache[index].events, cache[index].notEvents, actions);
     }
 
     return node;
+  },
+
+  cache: function() {
+    return cache;
+  },
+
+  empty: function() {
+    var n = cache.length, item;
+
+    while (n--) {
+      item = cache[n];
+      $(item.dom).off(item.eventType);
+    }
+
+    // reset
+    cache = [];
   }
 };
