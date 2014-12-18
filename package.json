@@ -1,0 +1,36 @@
+{
+  "name": "nd-action",
+  "version": "0.0.0",
+  "description": "更好的事件管理工具。",
+  "keywords": [],
+  "homepage": "https://github.com/ndfront/nd-action",
+  "author": {
+    "name": "crossjs",
+    "email": "liwenfu@crossjs.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ndfront/nd-action.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ndfront/nd-action/issues"
+  },
+  "licenses": "MIT",
+  "devDependencies": {
+    "grunt": "^0.4.5",
+    "grunt-contrib-jshint": "^0.10.0",
+    "grunt-exec": "^0.4.6",
+    "grunt-spm-server": "^0.0.3",
+    "load-grunt-tasks": "^0.6.0"
+  },
+  "spm": {
+    "main": "index.js",
+    "dependencies": {
+      "jquery": "1.11.1",
+      "nd-events": "0.0.0"
+    },
+    "devDependencies": {
+      "expect.js": "0.3.1"
+    }
+  }
+}

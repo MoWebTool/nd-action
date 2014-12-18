@@ -1,6 +1,6 @@
 MIT LICENSE
 
-Copyright (c) 2010 - 2099 Tom(洪军钊) http://tomjoke.com 
+Copyright (c) 2010 - 2099 Tom(洪军钊) http://tomjoke.com
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the

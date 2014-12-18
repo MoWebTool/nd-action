@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+
+<head>
+  <meta charset="utf-8" />
+  <title>Demo</title>
+  <style>
+  p {
+    border: 1px solid green;
+    padding: 1em;
+  }
+  </style>
+</head>
+
+<body>
+  <div id="container">
+    <p id="box1">
+        <input type="button" value="alert" data-action="alert"/>
+    </p>
+    <p id="box2" data-action="p">
+        <input type="button" value="允许冒泡到父节点，父节点不再往上冒泡" data-action="alert"/>
+    </p>
+    <p id="box3">
+        <input type="button" value="可冒泡" data-action="alert"/>
+    </p>
+    <p id="box4" data-action="alert">
+        <input type="button" value="禁止冒泡 1"/>
+        <input type="button" value="禁止冒泡 2"/>
+        <input type="button" value="禁止冒泡 3"/>
+    </p>
+    <p id="box5">
+        <input type="button" value="aim1 不点击我会触发(仅触发1次 return other)" data-action="aim1"/>
+        <input type="button" value="aim2 不点击我会触发(会不停触发 return false)" data-action="aim2"/>
+    </p>
+    <p id="box6">
+        <input type="button" value="触发事件A、B、C" data-action="A B C"/>
+    </p>
+    <p id="box7">
+        <input type="button" value="奇数次点击触发、偶数则不触发Aspect(before is after)" data-action="aspect"/>
+    </p>
+    <div id="box8">
+        <p data-action="link"> --- <a href="#">链接测试</a> ---</p>
+        <p>
+            <input type="radio" name="radio" data-action="radio"/>
+            <label><input type="radio" name="radio" data-action="radio"/>label radio</label>
+        </p>
+        <p>
+            <input type="checkbox" data-action="checkbox"/>
+            <label><input type="checkbox" data-action="checkbox"/>label checkbox</label>
+        </p>
+        <p id="result"></p>
+    </div>
+  </div>
+
+  <script src="seajs/sea.js"></script>
+  <script src="config.js"></script>
+  <script>
+  seajs.use('index', function(Action) {
+
+    'use strict';
+
+    Action.listen({
+      alert: function() {
+        console.log('document接受到冒泡，click');
+      },
+      aim1: {
+        is: function(e, node, key) {
+          console.log('aim1  只触发一次');
+        },
+        not: function() {
+          console.log('没点击到aim1');
+        }
+      },
+      aim2: {
+        is: function(e, node, key) {
+          console.log('aim2 会一直触发');
+        },
+        not: function() {
+          console.log('没点击到aim2');
+          return false;
+        }
+      }
+    });
+
+    Action.listen({
+      alert: function(e, node, key) {
+        e.stopPropagation();
+        console.log('click other');
+      }
+    }, document.querySelector('#box2'));
+
+    Action.listen({
+      alert: function(e, node, key) {
+        console.log('节点，click');
+      }
+    }, document.querySelector('#box3'));
+
+    Action.listen({
+      alert: function(e, node, key) {
+        e.stopPropagation();
+        console.log(e.target.value);
+      }
+    }, document.querySelector('#box4'));
+
+    Action.listen({
+      A: function(e, node, key) {
+        console.log(key, node);
+      },
+      B: function(e, node, key) {
+        console.log(key, node);
+      },
+      C: function(e, node, key) {
+        console.log(key, node);
+      }
+    }, document.querySelector('#box6'));
+
+    var num = 0;
+    Action.listen({
+      aspect: {
+        is: function(e, node, key) {
+          console.log('is');
+        },
+        before: function(e, node, key) {
+          console.log('before');
+          num++;
+          if (num % 2 === 1) {
+            return true;
+          } else {
+            return false;
+          }
+        },
+        after: function(e, node, key) {
+          console.log('after');
+        }
+      }
+    }, document.querySelector('#box7'));
+
+    var result = document.querySelector('#result');
+    Action.listen({
+      link: function(e) {
+        result.textContent = 'click link';
+        e.preventDefault();
+      },
+      radio: function(e, node) {
+        result.textContent = 'click radio';
+      },
+      checkbox: function(e, node) {
+        result.textContent = 'click checkbox, status:' + node[0].checked;
+      }
+    });
+
+  });
+  </script>
+</body>
+
+</html>
