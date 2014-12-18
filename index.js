@@ -129,14 +129,14 @@ module.exports = {
       node.on(type, function(e) {
         var target = $(e.target);
         var actionNode = target.closest('[' + actionKeyVal + ']');
-        var actionKeys = actionNode.attr(actionKeyVal);
+        var actionKeys = $.trim(actionNode.attr(actionKeyVal));
+
+        var contextBinded = false;
 
         // 返回
         if (!actionKeys && $.isEmptyObject(notEvents)) {
           return;
         }
-
-        bindContext(events, target);
 
         // 遍历 notEvents 如果新对象不是原先触发的对象则触发 not 事件
         $.each(notEvents, function(actionKey, notEvent) {
@@ -147,6 +147,11 @@ module.exports = {
               actionAspect: 'not'
             });
 
+            if (!contextBinded) {
+              bindContext(events, target);
+              contextBinded = true;
+            }
+
             if (triggerEvent(events, e) !== false) {
               delete notEvents[actionKey];
             }
@@ -154,22 +159,26 @@ module.exports = {
         });
 
         if (actionKeys) {
+
+          if (!contextBinded) {
+            bindContext(events, target);
+            contextBinded = true;
+          }
+
           actionKeys = actionKeys.split(actionKeySplitter);
           $.each(actionKeys, function(_index, actionKey) {
-            if (actionKey.length) {
-              $.extend(e, {
-                actionNode: actionNode,
-                actionKey: actionKey,
-                actionAspect: 'before'
-              });
+            $.extend(e, {
+              actionNode: actionNode,
+              actionKey: actionKey,
+              actionAspect: 'before'
+            });
 
-              if (triggerEvent(events, e) !== false) {
-                e.actionAspect = 'is';
-                triggerEvent(events, e);
+            if (triggerEvent(events, e) !== false) {
+              e.actionAspect = 'is';
+              triggerEvent(events, e);
 
-                e.actionAspect = 'after';
-                triggerEvent(events, e);
-              }
+              e.actionAspect = 'after';
+              triggerEvent(events, e);
             }
           });
         }
